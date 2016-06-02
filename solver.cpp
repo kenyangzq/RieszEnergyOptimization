@@ -8,36 +8,24 @@
 // to use this library just use the namespace "cppoptlib"
 namespace cppoptlib {
 
-    // we define a new problem for optimizing the rosenbrock function
+    // we define a new problem 
     // we use a templated-class rather than "auto"-lambda function for a clean architecture
-    template<typename T>
-        class Rosenbrock : public Problem<T> {
+        class Rosenbrock : public Problem<double> {
             public:
                 // this is just the objective (NOT optional)
-                T value(const Vector<T> &x) {
-                    const T t1 = (1 - x[0]);
-                    const T t2 = (x[1] - x[0] * x[0]);
+                double value(const Vector<double> &x) {
+                    const double t1 = (1 - x[0]);
+                    const double t2 = (x[1] - x[0] * x[0]);
                     return   t1 * t1 + 100 * t2 * t2;
                 }
 
                 // if you calculated the derivative by hand
                 // you can implement it here (OPTIONAL)
                 // otherwise it will fall back to (bad) numerical finite differences
-                void gradient(const Vector<T> &x, Vector<T> &grad) {
+                void gradient(const Vector<double> &x, Vector<double> &grad) {
                     grad[0]  = -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
                     grad[1]  =                   200 * (x[1] - x[0] * x[0]);
                 }
-
-                // same for hessian (OPTIONAL)
-                // if you want ot use 2nd-order solvers, I encourage you to specify the hessian
-                // finite differences usually (this implementation) behave bad
-                void hessian(const Vector<T> &x, Matrix<T> & hessian) {
-                    hessian(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 1;
-                    hessian(0, 1) = -400 * x[0];
-                    hessian(1, 0) = -400 * x[0];
-                    hessian(1, 1) = 200;
-                }
-
         };
 
 }
@@ -90,9 +78,9 @@ void ParseControlFile(ifstream & inputfile, int &dim, int &numpts, double & s){
 
 }
 
-double dist(const cppoptlib::Vector<double> & angles1,const cppoptlib::Vector<double> & angles2)
+double dist_squared(const cppoptlib::Vector<double> & angles1,const cppoptlib::Vector<double> & angles2)
 {
-    return sqrt(2-2*(sin(angles1(1))*sin(angles2(1))*cos(angles1(0)-angles2(0))+cos(angles1(1))*cos(angles2(1))));
+    return (2-2*(sin(angles1(1))*sin(angles2(1))*cos(angles1(0)-angles2(0))+cos(angles1(1))*cos(angles2(1))));
 }
 
 void To3D(const Eigen::Matrix<double, 1, 2> & angles, Eigen::Matrix<double, 1, 3> & coords)
@@ -116,26 +104,6 @@ void ComputeJacobian(const double & theta, const double & phi, Eigen::Matrix<dou
     temp(1,1) =  cos(phi) * sin(theta); // y
     temp(2,1) = -sin(phi);             // z
 }
-
-//void ToAngles(Eigen::MatrixXd & all_points, Eigen::MatrixXd & all_angles) 
-
-//void PointGradient(const Eigen::MatrixXd & all_points, const int & pt_index, const double & s_power, Eigen::Matrix<double, 1, 3> & output)
-//{
-    //Eigen::Matrix<double, 1, 3> temp_sum, temp;
-    //output << 0., 0., 0.;
-    //for (int i=0; i<pt_index; ++i)
-    //{
-        //temp = all_points.row(pt_index) - all_points.row(i);
-        //output += pow(temp.dot(temp), -1-s_power/2.0) * temp;
-    //}
-    //for (int i=pt_index+1; i<all_points.rows(); ++i)
-    //{
-        //temp = all_points.row(pt_index) - all_points.row(i);
-        //output += pow(temp.dot(temp), -1-s_power/2.0) * temp;
-    //}
-    //output *= -s_power;
-//}
-
 
 void AngleGradient(const Eigen::MatrixXd & all_angles, const int & pt_index, const double & s_power, Eigen::MatrixXd & output)
 {
@@ -171,6 +139,20 @@ void FullGradient(const Eigen::MatrixXd & all_angles, const double & s_power, Ei
     }
 }
 
+double Energy(const cppoptlib::Vector<double> & V, const double s_power)
+{
+    // V contains spherical coordinates
+    double e = 0;
+    for (int i=0; i<V.rows(); ++i)
+    {
+        for (int j=0; j<i; ++j)
+        {
+            e += pow(dist_squared(V.segment<2>(i), V.row(j)), -s_power/2.0);
+        }
+    }
+    return 2.0 * e;
+}
+
 void ToAngles(Eigen::MatrixXd & all_points, Eigen::MatrixXd & all_angles) 
 {
     //cppoptlib::Matrix<double> angles(numpts, dim-1);
@@ -194,11 +176,9 @@ int main(int argc, char const *argv[]) {
     openFile(inputfile, "control.inp");
     ParseControlFile(inputfile, dim, numpts, s);
     inputfile.close();
-    openFile(pointfile, "short.txt");
+    openFile(pointfile, "input.txt");
     Eigen::MatrixXd X(numpts, dim), A(numpts, dim-1), G(numpts, dim-1);
-    //
-    // testing
-    //
+    // read points
     int lineNumber = 0;
     while (!pointfile.eof() && lineNumber < numpts)
     {
@@ -208,27 +188,38 @@ int main(int argc, char const *argv[]) {
         }
         lineNumber++;
     }
-
+    pointfile.close();
+    //
+    //
     ToAngles(X,A);
     Eigen::Matrix<double, 1,3> v;
     cppoptlib::Vector<double> V;
-    Eigen::MatrixXd M;
-    Eigen::Matrix<double, 3, 2> jac;
+    //Eigen::MatrixXd M;
+    //Eigen::Matrix<double, 3, 2> jac;
 
     V.transpose();
-    for (int i=0; i<3; ++i)
-    {
-        To3D(A.row(i), v);
-        cout<< X.row(i) << "      " << v << endl;
-    }
+    //for (int i=0; i<3; ++i)
+    //{
+        //To3D(A.row(i), v);
+        //cout<< X.row(i) << "      " << v << endl;
+    //}
     To3D(A.row(0), v);
     V = v.transpose();
+    cout << X.rows() << endl;
     cout << endl;
-    FullGradient(A, 3.0, G);
-    int j=3;
+    V = X.col(1);
+    cout << V.block(0,0, 5, 1) << endl;
+    V.conservativeResize(2000);
+    cout << V.size() << endl;
+
+
+    //FullGradient(A, 3.0, G);
     //ComputeJacobian(A(j,0), A(j,1), jac);
-    cout << "test AngleGradient" << endl;
-    cout<< G  << endl;
+    //cout << "test Energy" << endl;
+    //cout << Energy(A, 3.0) << endl;
+    //cout << "test FullGradient" << endl;
+    //cout << G << endl;
+    //cout<< G  << endl;
 
 
 
@@ -248,6 +239,5 @@ int main(int argc, char const *argv[]) {
     //// print argmin
     //std::cout << "argmin      " << x.transpose() << std::endl;
     //std::cout << "f in argmin " << f(x) << std::endl;
-    pointfile.close();
     return 0;
 }
