@@ -1,37 +1,23 @@
+// TODO add multiprecision arithmetic with either https://gmplib.org/, or http://www.mpfr.org/
+// TODO use an autodifferentiation library like CppAD, http://www.coin-or.org/CppAD/
+//
+//
+//
 #include <fstream>
 #include <Eigen/Dense>
 #include <iostream>
 #include "meta.h"
 #include "problem.h"
-#include "solver/bfgssolver.h"
+#include "solver/lbfgsbsolver.h"
+#define PI 3.141592653589793
 
-// to use this library just use the namespace "cppoptlib"
-namespace cppoptlib {
+using namespace std;
 
     // we define a new problem 
     // we use a templated-class rather than "auto"-lambda function for a clean architecture
-        class Rosenbrock : public Problem<double> {
-            public:
-                // this is just the objective (NOT optional)
-                double value(const Vector<double> &x) {
-                    const double t1 = (1 - x[0]);
-                    const double t2 = (x[1] - x[0] * x[0]);
-                    return   t1 * t1 + 100 * t2 * t2;
-                }
-
-                // if you calculated the derivative by hand
-                // you can implement it here (OPTIONAL)
-                // otherwise it will fall back to (bad) numerical finite differences
-                void gradient(const Vector<double> &x, Vector<double> &grad) {
-                    grad[0]  = -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
-                    grad[1]  =                   200 * (x[1] - x[0] * x[0]);
-                }
-        };
-
-}
 
 
-using namespace std;
+
 ifstream & openFile (ifstream & inputfile, string name){
     inputfile.open(name.c_str());
     if (inputfile.fail()) {
@@ -90,6 +76,13 @@ void To3D(const Eigen::Matrix<double, 1, 2> & angles, Eigen::Matrix<double, 1, 3
     coords(2) = cos(angles(1));
 }
 
+void ToVector(const Eigen::MatrixXd & M, cppoptlib::Vector<double> & V )
+{ 
+    int c = M.cols();
+    for (int i=0; i<M.rows(); ++i )
+            V.segment(i*c,c) = M.row(i);
+}
+
 void ComputeJacobian(const double & theta, const double & phi, Eigen::Matrix<double, 3, 2> & temp){
     //x = sin(phi) cos(theta)
     //y = sin(phi) sin(theta)
@@ -105,49 +98,61 @@ void ComputeJacobian(const double & theta, const double & phi, Eigen::Matrix<dou
     temp(2,1) = -sin(phi);             // z
 }
 
-void AngleGradient(const Eigen::MatrixXd & all_angles, const int & pt_index, const double & s_power, Eigen::MatrixXd & output)
+void AngleGradient(const cppoptlib::Vector<double> & all_angles, const int & pt_index, const double & s_power, cppoptlib::Vector<double> & output)
 {
     Eigen::Matrix<double, 1, 3> temp_sum, temp_pt, temp_i, temp;
     Eigen::Matrix<double, 3, 2> temp_jacobian;
     temp_sum.setZero();
     for (int i=0; i<pt_index; ++i)
     {
-        To3D(all_angles.row(pt_index), temp_pt);
-        To3D(all_angles.row(i), temp_i);
+        To3D(all_angles.segment<2>(pt_index*2), temp_pt);
+        To3D(all_angles.segment<2>(i*2), temp_i);
         temp = temp_pt - temp_i;
         temp_sum += pow(temp.dot(temp), -1-s_power/2.0) * temp;
     }
     for (int i=pt_index+1; i<all_angles.rows(); ++i)
     {
-        To3D(all_angles.row(pt_index), temp_pt);
-        To3D(all_angles.row(i), temp_i);
+        To3D(all_angles.segment<2>(pt_index*2), temp_pt);
+        To3D(all_angles.segment<2>(i*2), temp_i);
         temp = temp_pt - temp_i;
         temp_sum += pow(temp.dot(temp), -1-s_power/2.0) * temp;
     }
     temp_sum *= -s_power;
-    ComputeJacobian(all_angles(pt_index,0), all_angles(pt_index,1), temp_jacobian);
-    output.row(pt_index) = temp_sum * temp_jacobian;
+    ComputeJacobian(all_angles(pt_index*2+0), all_angles(pt_index*2+1), temp_jacobian);
+    output.segment<2>(pt_index*2) = temp_sum * temp_jacobian;
 }
 
-
-
-void FullGradient(const Eigen::MatrixXd & all_angles, const double & s_power, Eigen::MatrixXd & output)
+void FullGradient(const cppoptlib::Vector<double> & all_angles, const double & s_power, cppoptlib::Vector<double> & output)
 {
-    for(int i=0; i<all_angles.rows(); ++i)
+    for(int i=0; i<all_angles.size()/2; ++i)
     {
         AngleGradient(all_angles, i, s_power, output);
     }
 }
 
-double Energy(const cppoptlib::Vector<double> & V, const double s_power)
+double EnergyMatrix(const cppoptlib::Matrix<double> & M, const double s_power)
 {
-    // V contains spherical coordinates
+    // M contains spherical coordinates
     double e = 0;
-    for (int i=0; i<V.rows(); ++i)
+    for (int i=0; i<M.rows(); ++i)
     {
         for (int j=0; j<i; ++j)
         {
-            e += pow(dist_squared(V.segment<2>(i), V.row(j)), -s_power/2.0);
+            e += pow(dist_squared(M.row(i), M.row(j)), -s_power/2.0);
+        }
+    }
+    return 2.0 * e;
+}
+
+double Energy(const cppoptlib::Vector<double> & V, const double s_power, const int dim)
+{
+    // V contains spherical coordinates
+    double e = 0;
+    for (int i=0; i<V.size()/dim; ++i)
+    {
+        for (int j=0; j<i; ++j)
+        {
+            e += pow(dist_squared(V.segment<2>(i*dim), V.segment<2>(j*dim)), -s_power/2.0);
         }
     }
     return 2.0 * e;
@@ -164,9 +169,28 @@ void ToAngles(Eigen::MatrixXd & all_points, Eigen::MatrixXd & all_angles)
         all_angles(i,0) = atan2(y,x);
         all_angles(i,1) = acos(z/r);
     }
-
 }
 
+        class DemoProblem : public cppoptlib::Problem<double> {
+            public:
+                // this is just the objective (NOT optional)
+                //double value(const Vector<double> &x) {
+                    //const double t1 = (1 - x[0]);
+                    //const double t2 = (x[1] - x[0] * x[0]);
+                    //return   t1 * t1 + 100 * t2 * t2;
+                //}
+                //
+                double value(const cppoptlib::Vector<double> &x) {
+                    return Energy(x, 3.0, 2);
+                }
+
+                // if you calculated the derivative by hand
+                // you can implement it here (OPTIONAL)
+                // otherwise it will fall back to (bad) numerical finite differences
+                void gradient(const cppoptlib::Vector<double> &x, cppoptlib::Vector<double> &grad) {
+                    FullGradient(x, 3.0, grad);
+                }
+        };
 /////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char const *argv[]) {
 
@@ -176,8 +200,9 @@ int main(int argc, char const *argv[]) {
     openFile(inputfile, "control.inp");
     ParseControlFile(inputfile, dim, numpts, s);
     inputfile.close();
+    numpts = 100;
     openFile(pointfile, "input.txt");
-    Eigen::MatrixXd X(numpts, dim), A(numpts, dim-1), G(numpts, dim-1);
+    Eigen::MatrixXd X(numpts, dim), A(numpts, dim-1);
     // read points
     int lineNumber = 0;
     while (!pointfile.eof() && lineNumber < numpts)
@@ -192,52 +217,39 @@ int main(int argc, char const *argv[]) {
     //
     //
     ToAngles(X,A);
-    Eigen::Matrix<double, 1,3> v;
-    cppoptlib::Vector<double> V;
-    //Eigen::MatrixXd M;
-    //Eigen::Matrix<double, 3, 2> jac;
+    //Eigen::Matrix<double, 1,3> v;
+    cppoptlib::Vector<double> V(A.size()), G(A.size());
+    ToVector(A,V);
+    //cout << A << endl;
+    cout << V.transpose() << endl << endl;
+     //initialize the DemoProblem-problem
+     //
+    DemoProblem f;
+    cppoptlib::Vector<double> lowerBound(V.size());
+    lowerBound.setZero();
+    for (int i=0; i<V.size()/2; ++i)
+    {
+        lowerBound(2*i) = -PI;
+    }
+    cppoptlib::Vector<double> upperBound = cppoptlib::Vector<double>::Ones(V.size())*PI;
+    cout << lowerBound.transpose() << endl;
+    cout << upperBound.transpose() << endl;
 
-    V.transpose();
-    //for (int i=0; i<3; ++i)
-    //{
-        //To3D(A.row(i), v);
-        //cout<< X.row(i) << "      " << v << endl;
-    //}
-    To3D(A.row(0), v);
-    V = v.transpose();
-    cout << X.rows() << endl;
-    cout << endl;
-    V = X.col(1);
-    cout << V.block(0,0, 5, 1) << endl;
-    V.conservativeResize(2000);
-    cout << V.size() << endl;
-
-
-    //FullGradient(A, 3.0, G);
-    //ComputeJacobian(A(j,0), A(j,1), jac);
-    //cout << "test Energy" << endl;
-    //cout << Energy(A, 3.0) << endl;
-    //cout << "test FullGradient" << endl;
-    //cout << G << endl;
-    //cout<< G  << endl;
-
-
-
-    // initialize the Rosenbrock-problem
-    //cppoptlib::Rosenbrock<double> f;
+    f.setLowerBound(lowerBound);
+    f.setUpperBound(upperBound);
     //// choose a starting point
     //cppoptlib::Vector<double> x(2); x << -1, 2;
 
     //// first check the given derivative 
     //// there is output, if they are NOT similar to finite differences
-    //bool probably_correct = f.checkGradient(x);
+    bool probably_correct = f.checkGradient(V);
 
     //// choose a solver
-    //cppoptlib::BfgsSolver<double> solver;
+    cppoptlib::LbfgsbSolver<double> solver;
     //// and minimize the function
-    //solver.minimize(f, x);
+    solver.minimize(f, V);
     //// print argmin
-    //std::cout << "argmin      " << x.transpose() << std::endl;
-    //std::cout << "f in argmin " << f(x) << std::endl;
+    cout << "argmin      " << V.transpose() << std::endl;
+    cout << "f in argmin " << f(V) << std::endl;
     return 0;
 }
