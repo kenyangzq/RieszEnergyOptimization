@@ -10,13 +10,14 @@
 #include "meta.h"
 #include "problem.h"
 #include "solver/lbfgsbsolver.h"
+#include <omp.h>
 //#include "solver/lbfgssolver.h"
 #define PI 3.141592653589793
 
 using namespace std;
 
-    // we define a new problem 
-    // we use a templated-class rather than "auto"-lambda function for a clean architecture
+// we define a new problem 
+// we use a templated-class rather than "auto"-lambda function for a clean architecture
 
 
 
@@ -82,7 +83,7 @@ void ToVector(const Eigen::MatrixXd & M, cppoptlib::Vector<double> & V )
 { 
     int c = M.cols();
     for (int i=0; i<M.rows(); ++i )
-            V.segment(i*c,c) = M.row(i);
+        V.segment(i*c,c) = M.row(i);
 }
 
 void ComputeJacobian(const double & theta, const double & phi, Eigen::Matrix<double, 3, 2> & temp){
@@ -107,17 +108,25 @@ void AngleGradient(const cppoptlib::Vector<double> & all_angles, const int & pt_
     Eigen::Matrix<double, 3, 2> temp_jacobian;
     temp_sum.setZero();
     To3D(all_angles.segment<2>(pt_index*2), temp_pt);
+#pragma omp for ordered schedule(dynamic) private(temp_i, temp)
     for (int i=0; i<pt_index; ++i)
     {
         To3D(all_angles.segment<2>(i*2), temp_i);
         temp = temp_pt - temp_i;
-        temp_sum += pow(temp.dot(temp), -1-s_power/2.0) * temp;
+#pragma omp critical
+        {
+            temp_sum += pow(temp.dot(temp), -1-s_power/2.0) * temp;
+        }
     }
+#pragma omp for ordered schedule(dynamic) private(temp_i, temp)
     for (int i=pt_index+1; i<all_angles.rows()/2; ++i)
     {
         To3D(all_angles.segment<2>(i*2), temp_i);
         temp = temp_pt - temp_i;
-        temp_sum += pow(temp.dot(temp), -1-s_power/2.0) * temp;
+#pragma omp critical
+        {
+            temp_sum += pow(temp.dot(temp), -1-s_power/2.0) * temp;
+        }
     }
     temp_sum *= -s_power;
     //cout << "here is your sum: "<< temp_sum << endl;
@@ -127,9 +136,12 @@ void AngleGradient(const cppoptlib::Vector<double> & all_angles, const int & pt_
 
 void FullGradient(const cppoptlib::Vector<double> & all_angles, const double & s_power, cppoptlib::Vector<double> & output)
 {
+#pragma omp for schedule(dynamic) 
     for(int i=0; i<all_angles.size()/2; ++i)
     {
         AngleGradient(all_angles, i, s_power, output);
+   //int nThreads=omp_get_num_threads();
+        //std::cout<<nThreads<<"\t nThreads"<<std::endl;
     }
 }
 
@@ -138,6 +150,7 @@ double EnergyMatrix(const cppoptlib::Matrix<double> & M, const double s_power)
 {
     // M contains spherical coordinates
     double e = 0;
+#pragma omp for ordered schedule(dynamic)
     for (int i=0; i<M.rows(); ++i)
     {
         for (int j=0; j<i; ++j)
@@ -152,10 +165,12 @@ double Energy(const cppoptlib::Vector<double> & V, const double s_power, const i
 {
     // V contains spherical coordinates
     double e = 0;
+#pragma omp for ordered schedule(dynamic)
     for (int i=0; i<V.size()/dim; ++i)
     {
         for (int j=0; j<i; ++j)
         {
+#pragma omp atomic
             e += pow(dist_squared(V.segment<2>(i*dim), V.segment<2>(j*dim)), -s_power/2.0);
         }
     }
@@ -175,29 +190,29 @@ void ToAngles(Eigen::MatrixXd & all_points, Eigen::MatrixXd & all_angles)
     }
 }
 
-        class DemoProblem : public cppoptlib::Problem<double> {
-            int dim;
-            double s;
-            public:
-            DemoProblem(int dim_value, double s_value):dim(dim_value),s(s_value){}
-                // this is just the objective (NOT optional)
-                //double value(const Vector<double> &x) {
-                    //const double t1 = (1 - x[0]);
-                    //const double t2 = (x[1] - x[0] * x[0]);
-                    //return   t1 * t1 + 100 * t2 * t2;
-                //}
-                //
-                double value(const cppoptlib::Vector<double> &x) {
-                    return Energy(x, s, dim-1);
-                }
+class DemoProblem : public cppoptlib::Problem<double> {
+    int dim;
+    double s;
+    public:
+    DemoProblem(int dim_value, double s_value):dim(dim_value),s(s_value){}
+    // this is just the objective (NOT optional)
+    //double value(const Vector<double> &x) {
+    //const double t1 = (1 - x[0]);
+    //const double t2 = (x[1] - x[0] * x[0]);
+    //return   t1 * t1 + 100 * t2 * t2;
+    //}
+    //
+    double value(const cppoptlib::Vector<double> &x) {
+        return Energy(x, s, dim-1);
+    }
 
-                // if you calculated the derivative by hand
-                // you can implement it here (OPTIONAL)
-                // otherwise it will fall back to (bad) numerical finite differences
-                void gradient(const cppoptlib::Vector<double> &x, cppoptlib::Vector<double> &grad) {
-                    FullGradient(x, s, grad);
-                }
-        };
+    // if you calculated the derivative by hand
+    // you can implement it here (OPTIONAL)
+    // otherwise it will fall back to (bad) numerical finite differences
+    void gradient(const cppoptlib::Vector<double> &x, cppoptlib::Vector<double> &grad) {
+        FullGradient(x, s, grad);
+    }
+};
 /////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char const *argv[]) {
 
@@ -228,18 +243,20 @@ int main(int argc, char const *argv[]) {
     cppoptlib::Vector<double> V(A.size()), G(A.size());
     ToVector(A,V);
 
-     //initialize the DemoProblem-problem
-     //
-     //
-    cout << "  original energy: " << Energy(V, s, 2) << endl;
-    DemoProblem f(dim, s);
+    //initialize the DemoProblem-problem
+    //
+    //
+    for (int i = 0; i< 100; ++i)
+        FullGradient(V, s, G);
+    //cout << "  original energy: " << Energy(V, s, 2) << endl;
+    //DemoProblem f(dim, s);
 
     // bounds for lbfgsb
     //cppoptlib::Vector<double> lowerBound(V.size());
     //lowerBound.setZero();
     //for (int i=0; i<V.size()/2; ++i)
     //{
-        //lowerBound(2*i) = -PI;
+    //lowerBound(2*i) = -PI;
     //}
     //cppoptlib::Vector<double> upperBound = cppoptlib::Vector<double>::Ones(V.size())*PI;
     //f.setLowerBound(lowerBound);
@@ -251,19 +268,19 @@ int main(int argc, char const *argv[]) {
     //cout << probably_correct << endl;
 
     //cppoptlib::LbfgsbSolver<double> solver;
-    cppoptlib::LbfgsbSolver<double> solver;
-    solver.minimize(f, V);
-    //// print argmin
-    cout << "argmin      " << V.transpose() << std::endl;
-    cout << endl << "f in argmin " << f(V) << std::endl;
-    ofstream outfile;
-    Eigen::Matrix<double, 1,3> out_vector;
-    outfile.open("bfgs_output.txt",std::ofstream::out);
-        for (int i=0; i<V.size()/dim; ++i)
-        {
-            To3D(V.segment<2>(2*i), out_vector);
-            outfile << setprecision(7) << out_vector(0) << '\t' <<  out_vector(1) << '\t' << out_vector(2) << '\t'<< endl;
-        }
+    //cppoptlib::LbfgsbSolver<double> solver;
+    //solver.minimize(f, V);
+    ////// print argmin
+    //cout << "argmin      " << V.transpose() << std::endl;
+    //cout << endl << "f in argmin " << f(V) << std::endl;
+    //ofstream outfile;
+    //Eigen::Matrix<double, 1,3> out_vector;
+    //outfile.open("bfgs_output.txt",std::ofstream::out);
+    //for (int i=0; i<V.size()/dim; ++i)
+    //{
+        //To3D(V.segment<2>(2*i), out_vector);
+        //outfile << setprecision(7) << out_vector(0) << '\t' <<  out_vector(1) << '\t' << out_vector(2) << '\t'<< endl;
+    //}
 
     return 0;
 }
