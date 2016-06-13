@@ -27,7 +27,6 @@ void openFile (ifstream & inputfile, string name){
         cout << "Error opening input data file\n";
         exit(1);
     }
-    return inputfile;
 }
 
 string ParseControlFile(ifstream & inputfile, int &dim, int &numpts, double & s, int & c, int & max_neighbor, int & history_size){
