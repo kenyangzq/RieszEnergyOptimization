@@ -3,48 +3,26 @@
 //
 //
 //
+
+
 #include <iomanip>
 #include <fstream>
-#include <boost/filesystem.hpp>
-#include <boost/regex.hpp>
-//#include <boost/system/>
 #include <Eigen/Dense>
-#include <Eigen/Core>
 #include <iostream>
 #include "meta.h"
 #include "problem.h"
 #include "solver/lbfgssolver.h"
-#include "solver/bfgssolver.h"
 #include "solver/lbfgsbsolver.h"
 
-
-#define PI 3.1415926
+#define PI 3.141592653589793
 
 using namespace std;
 
 
 void openFile (ifstream & inputfile, string name){
 
-//const std::string target_path( "/my/directory/" );
-//const boost::regex my_filter( "somefiles.*\\.txt" );
-//std::vector< std::string > all_matching_files;
-//boost::filesystem::directory_iterator end_itr; // Default ctor yields past-the-end
-//for( boost::filesystem::directory_iterator i( target_path ); i != end_itr; ++i )
-//{
-    //// Skip if not a file
-    //if( !boost::filesystem::is_regular_file( i->status() ) ) continue;
-
-    //boost::smatch what;
-
-    //// Skip if no match for V2:
-    //if( !boost::regex_match( i->path().filename().string(), what, my_filter ) ) continue;
-    //// For V3:
-    ////if( !boost::regex_match( i->path().filename(), what, my_filter ) ) continue;
-
-    //// File matches, store it
-    //all_matching_files.push_back( i->path().filename().string() );
-//}
-// 
+//
+//
 //
     inputfile.open(name.c_str());
     if (inputfile.fail()) {
@@ -503,27 +481,27 @@ int main(int argc, char const *argv[]) {
     
     
     
-    cppoptlib::LbfgsbSolver<double> solver;
-    solver.setHistorySize(history_size);
-    solver.minimize(f, V);
+    //cppoptlib::LbfgsbSolver<double> solver;
+    //solver.setHistorySize(history_size);
+    //solver.minimize(f, V);
     
-    cout << "Cutoff energy after:   " << f(V) << endl;
-    cout << "Full energy after:     " << Energy(V, s, dim-1) << endl;
+    //cout << "Cutoff energy after:   " << f(V) << endl;
+    //cout << "Full energy after:     " << Energy(V, s, dim-1) << endl;
 
-    // read comparefile
-    // compare to the C-code energy
-    //
-    lineNumber = 0;
-    while (!comparefile.eof() && lineNumber < numpts)
-    {
-        for (int i=0; i<3;  ++i)
-        {
-            comparefile >> ComparePoints(lineNumber, i);
-        }
-        lineNumber++;
-    }
-    comparefile.close();
-    //
+    //// read comparefile
+    //// compare to the C-code energy
+    ////
+    //lineNumber = 0;
+    //while (!comparefile.eof() && lineNumber < numpts)
+    //{
+        //for (int i=0; i<3;  ++i)
+        //{
+            //comparefile >> ComparePoints(lineNumber, i);
+        //}
+        //lineNumber++;
+    //}
+    //comparefile.close();
+    ////
 
     ToAngles(ComparePoints,A);
     ToVector(A,V);

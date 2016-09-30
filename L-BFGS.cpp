@@ -3,23 +3,32 @@
 //
 //
 //
+//#include <iomanip>
+//#include <fstream>
+//#include <Eigen/Dense>
+//#include <iostream>
+//#include <iomanip>
+//#include "meta.h"
+//#include "problem.h"
+//#include "solver/lbfgsbsolver.h"
+//#include "solver/lbfgssolver.h"
+//#include <omp.h>
+//
 #include <iomanip>
 #include <fstream>
 #include <Eigen/Dense>
 #include <iostream>
-#include <iomanip>
 #include "meta.h"
 #include "problem.h"
-#include "solver/lbfgsbsolver.h"
-#include "solver/lbfgssolver.h"
-#include <omp.h>
+#include "lbfgssolver.h"
+//
+//
+//
 #define PI 3.141592653589793
 #define THREADNUM 2
 
 using namespace std;
 
-    // we define a new problem 
-    // we use a templated-class rather than "auto"-lambda function for a clean architecture
 
 void openFile (ifstream & inputfile, string name){
     inputfile.open(name.c_str());

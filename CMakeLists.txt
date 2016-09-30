@@ -30,31 +30,34 @@ endif()
 #message(${CMAKE_CXX_FLAGS_RELEASE}) 
 
 
-find_package(OpenMP REQUIRED)
-if(OPENMP_FOUND)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-endif()
+#find_package(OpenMP REQUIRED)
+#if(OPENMP_FOUND)
+    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+#endif()
 
 # Eigen3 Headerfiles
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Eigen3 REQUIRED)
 include_directories(EIGEN3_INCLUDE_DIR)
 
-#include_directories(/usr/include/eigen3)
 
-# GTest headerfiles
-find_package(GTest REQUIRED)
-include_directories(GTest_INCLUDE_DIR)
+# #GTest headerfiles
+#find_package(GTest REQUIRED)
+#include_directories(GTest_INCLUDE_DIR)
 #include_directories(SYSTEM ${GTEST_INCLUDE_DIRS})
-include_directories(/home/alex/Recherche/Code/CppNumericalSolvers/include/cppoptlib)
+#include_directories(/home/alex/Recherche/Code/CppNumericalSolvers/include/cppoptlib)
 
-set(Boost_USE_STATIC_LIBS ON) 
-#set(Boost_USE_MULTITHREADED ON)  
-##set(Boost_USE_STATIC_RUNTIME OFF) 
-find_package(Boost REQUIRED COMPONENTS system filesystem regex ) 
-include_directories(${Boost_INCLUDE_DIRS}) 
+include_directories(./include/cppoptlib)
+include_directories(./include/eigen)
+
+
+#set(Boost_USE_STATIC_LIBS ON) 
+##set(Boost_USE_MULTITHREADED ON)  
+###set(Boost_USE_STATIC_RUNTIME OFF) 
+#find_package(Boost REQUIRED COMPONENTS system filesystem regex ) 
+#include_directories(${Boost_INCLUDE_DIRS}) 
 
 #if(Boost_FOUND)
     #add_executable(progname file1.cxx file2.cxx) 
@@ -63,7 +66,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 
 
-SET( RIESZ_FILES L-BFGS L-BFGS_truncated L-BFGS_parallel ) 
+SET( RIESZ_FILES L-BFGS_truncated  ) 
 
 
 
