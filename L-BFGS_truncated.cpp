@@ -43,6 +43,8 @@ string ParseControlFile(ifstream & inputfile, int &dim, int &numpts, double & s,
             tmp >> k >> k >> max_neighbor;
         }else if (lineNumber == 12) {
             tmp >> k >> k >> filename;
+        }else if (lineNumber == 13) {
+            tmp >> k >> k >> history_size;
         }
     }
     cout << "\nSummary of the control file:\n\n";

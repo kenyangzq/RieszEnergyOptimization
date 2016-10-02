@@ -10,5 +10,4 @@ numits = 300
 partitionnum = 5
 maxNbrs = 500
 outfile = test500
-innerradius = 0.5
 LBFGSHistorySize = 2
