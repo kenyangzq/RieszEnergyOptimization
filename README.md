@@ -8,13 +8,13 @@ Riesz potential.
 
 The problem is controlled by a set of parameters specified in the _control.inp_
 file:
-- *s* is the power used in Riesz kernel
-- *dim* dimension of the ambient space
-- *file* is an int, controlling whether a starting configuration is provided; if
+- **s** is the power used in Riesz kernel
+- **dim** dimension of the ambient space
+- **file** is an int, controlling whether a starting configuration is provided; if
   not, a random one is generated
-- *numpts* total number of points in the configuration
-- *outfile* name of the output file; .txt extension will be appended
-- *LBFGSHistorySize* previous iterations of the LBFGS-method that need to be taken into account
+- **numpts** total number of points in the configuration
+- **outfile** name of the output file; .txt extension will be appended
+- **LBFGSHistorySize** previous iterations of the LBFGS-method that need to be taken into account
 
 
 Written with Ziqi (Ken) Yang (https://github.com/kenyangzq) with input from Doug
