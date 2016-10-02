@@ -66,14 +66,24 @@ include_directories(./include/eigen)
 
 
 
-SET( RIESZ_FILES L-BFGS_truncated  ) 
+SET( RIESZ_FILES main ) 
+#set( SOURCES min_energy.h)
 
 
 
+#set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} ) #/bin/examples
+#foreach( currentfile ${RIESZ_FILES} )
+    #add_executable( ${currentfile} "${currentfile}.cpp" ${SOURCES} )
+    #target_link_libraries(${currentfile} ${GTEST_LIBRARIES}
+        #${GTEST_MAIN_LIBRARIES}  ${Boost_LIBRARIES} pthread )
+#endforeach( currentfile ${RIESZ_FILES} )
 
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} ) #/bin/examples
-foreach( currentfile ${RIESZ_FILES} )
-    add_executable( ${currentfile} "${currentfile}.cpp"  )
-    target_link_libraries(${currentfile} ${GTEST_LIBRARIES}
-        ${GTEST_MAIN_LIBRARIES}  ${Boost_LIBRARIES} pthread )
-endforeach( currentfile ${RIESZ_FILES} )
+
+file(GLOB SOURCES
+    *.h
+    main.cpp
+    L-BFGS_truncated.cpp
+)
+add_executable( main ${SOURCES})
+target_link_libraries(${currentfile} ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES}  ${Boost_LIBRARIES} pthread )
+
