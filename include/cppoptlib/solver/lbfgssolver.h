@@ -19,8 +19,13 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
     using MatrixType = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
     void minimize(ProblemType &objFunc, TVector &x0) {
+        printf("===============================\n");
+        printf("Minimization start: \n");
         const size_t m = 10;
         const size_t DIM = x0.rows();
+        size_t numFile = 20;
+        size_t numIteration = 1000;
+        int tmp = numIteration/numFile;
         MatrixType sVector = MatrixType::Zero(DIM, m);
         MatrixType yVector = MatrixType::Zero(DIM, m);
         Eigen::Matrix<Scalar, Eigen::Dynamic, 1> alpha = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>::Zero(m);
@@ -96,14 +101,38 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
                 yVector.rightCols(1) = y;
             }
             // update the scaling factor
-            H0k = y.dot(s) / static_cast<double>(y.dot(y));
-
+            double dot =  static_cast<double>(y.dot(y));
+            if (dot <= 1e-7) {
+                
+                printf("\nMinimize complete.\n");
+                printf("Norm between two consecutive iterations is %.10f\n", s.norm());
+                printf("Now the norm of gradient is: %f\n", grad.norm());
+                printf("===============================\n");
+                break;
+            }else
+                H0k = y.dot(s) / dot;
+            
+            
+            
             x_old = x0;
             // std::cout << "iter: "<<globIter<< ", f = " <<  objFunc.value(x0) << ", ||g||_inf "
             // <<gradNorm  << std::endl;
 
             iter++;
-            globIter++;
+            
+//            std::cout << "iter: " << iter << std::endl;
+            
+            
+            if (iter % tmp == 0) {
+                //std::string name = "./output/output" + std::to_string(iter/tmp) + ".txt";
+                //outputfile.open(name.c_str());
+                
+                printf("Energy: %f\n", objFunc.value(x0));
+                // writeFiles(outputfile, name, x0, 3);
+                
+                //outputfile.close();
+            }
+            
             ++this->m_current.iterations;
             this->m_current.gradNorm = grad.template lpNorm<Eigen::Infinity>();
             this->m_status = checkConvergence(this->m_stop, this->m_current);

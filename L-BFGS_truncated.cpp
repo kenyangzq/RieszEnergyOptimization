@@ -196,10 +196,20 @@ void ComputeJacobianN(const cppoptlib::Vector<double> & angles, cppoptlib::Matri
 
 double dist_squared(const cppoptlib::Vector<double> & angles1,const cppoptlib::Vector<double> & angles2)
 {
-    cppoptlib::Vector<double> temp2(angles2.size()+1), temp1(angles1.size()+1);
-    ToND(angles2, temp2);
-    ToND(angles1, temp1);
-    return (temp2- temp1).squaredNorm();
+    double tmp = 1;
+    double dist_s = cos(angles1[0])*cos(angles2[0]);
+    for (int i = 1; i < angles1.size(); i++) {
+	   	tmp *= sin(angles1[i-1])*sin(angles2[i-1]);
+        dist_s += cos(angles1[i])*cos(angles2[i])*tmp;
+    }
+    dist_s += tmp*sin(angles1[angles1.size()-1])*sin(angles2[angles2.size()-1]);
+
+
+
+    //cppoptlib::Vector<double> temp2(angles2.size()+1), temp1(angles1.size()+1);
+    //ToND(angles2, temp2);
+    //ToND(angles1, temp1);
+    return  (2 - 2*dist_s);
 }
 
 
