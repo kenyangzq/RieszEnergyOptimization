@@ -31,4 +31,4 @@ the Riesz kernel.
 
 Eigen:
 - sudo apt-get install libeigen3-dev        (deb-based distributions)
-- brew install eigen                        (MacOs)
+- brew install eigen                        (MacOS)
