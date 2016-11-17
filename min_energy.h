@@ -85,4 +85,7 @@ void writeFile (ofstream & outputfile, string name, cppoptlib::Vector<double> V,
 
 void randptSphere(double coordinates[], int dim);
 
+// TODO: random permutation of the working configuration, as in basin-hopping
+//void randptSphere(cppoptlib::TVector & coordinates)
+
 #endif

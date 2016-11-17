@@ -464,7 +464,6 @@ void randptSphere(double coordinates[], int dim)
     double norm;
     double normsq=2;
     
-    while(normsq>1 || normsq==0){
         normsq=0;
         
         for(int i=0;i<dim;i++){
@@ -472,7 +471,6 @@ void randptSphere(double coordinates[], int dim)
             normsq += z*z;
             coordinates[i] = z;
         }
-    }
     
     norm=sqrt(normsq);
     
@@ -483,5 +481,28 @@ void randptSphere(double coordinates[], int dim)
 }
 
 
+void randptSphere(cppoptlib::Problem<double>::TVector & coordinates)
+{
+     
+    size_t dim = coordinates.size();
+    double z;
+    double norm;
+    double normsq=2;
+    
+        normsq=0;
+        
+        for(int i=0;i<dim;i++){
+            z=1-(2*(double)rand()/(double)RAND_MAX);
+            normsq += z*z;
+            coordinates[i] = z;
+        }
+    
+    norm=sqrt(normsq);
+    
+    for(int i=0;i<dim;i++){
+        coordinates[i] = coordinates[i]/norm;
+    }
+    
+}
 
 /////////////////////////////////////////////////////////////////////////////////
