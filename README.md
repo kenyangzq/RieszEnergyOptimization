@@ -40,3 +40,19 @@ Eigen:
 - cmake .
 - make
 - ./main
+
+# Demonstration
+Image of 1000 random points on the sphere after optimization: 
+
+<img src="https://github.com/kenyangzq/RieszEnergyOptimization/blob/master/Image/1000min.png" width="300">
+
+A nice gif showing the Voronoi Diagram in optimization process for 1600 random points using BFGS algorithm: 
+
+<img src="https://github.com/kenyangzq/RieszEnergyOptimization/blob/master/Image/1600s2BFGS2.gif" width="400">
+
+Another gif for 3000 random points: 
+
+<img src="https://github.com/kenyangzq/RieszEnergyOptimization/blob/master/Image/3ks2.gif" width="400">
+
+
+
