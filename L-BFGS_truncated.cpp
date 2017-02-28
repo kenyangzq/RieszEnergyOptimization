@@ -462,17 +462,14 @@ void randptSphere(double coordinates[], int dim)
     
     double z;
     double norm;
-    double normsq=2;
+    double normsq=0;
     
-    while(normsq>1 || normsq==0){
-        normsq=0;
         
-        for(int i=0;i<dim;i++){
-            z=1-(2*(double)rand()/(double)RAND_MAX);
-            normsq += z*z;
-            coordinates[i] = z;
-        }
-    }
+    for(int i=0;i<dim;i++){
+        z=1-(2*(double)rand()/(double)RAND_MAX);
+		normsq += z*z;
+		coordinates[i] = z;
+	}
     
     norm=sqrt(normsq);
     
@@ -481,6 +478,26 @@ void randptSphere(double coordinates[], int dim)
     }
     
 }
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
