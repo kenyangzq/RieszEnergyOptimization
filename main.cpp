@@ -1,4 +1,9 @@
 #include "min_energy.h"
+//TODO: timing
+//TODO: torus
+//TODO: I/O
+//
+//
 using namespace std;
 
 int main(int argc, char const *argv[]) {

@@ -23,6 +23,8 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
         printf("Minimization start: \n");
         const size_t m = 10;
         const size_t DIM = x0.rows();
+        const size_t perturbations=3;
+        int pert=0;
         size_t numFile = 20;
         size_t numIteration = 1000;
         int tmp = numIteration/numFile;
@@ -33,8 +35,9 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
         objFunc.gradient(x0, grad);
         TVector x_old = x0;
         TVector x_old2 = x0;
+        TVector x_pert;
 
-        size_t iter = 0, globIter = 0;
+        size_t iter = 0;
         Scalar H0k = 1;
         this->m_current.reset();
         do {
@@ -104,12 +107,17 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
             double dot =  static_cast<double>(y.dot(y));
             if (dot <= 1e-7) {
                 
-                printf("\nMinimize complete.\n");
-                printf("Norm between two consecutive iterations is %.10f\n", s.norm());
-                printf("Now the norm of gradient is: %f\n", grad.norm());
-                printf("===============================\n");
-                break;
-            }else
+               //if (pert == perturbations) 
+                {
+                    printf("\nMinimize complete.\n");
+                    printf("Norm between two consecutive iterations is %.10f\n", s.norm());
+                    printf("Now the norm of gradient is: %f\n", grad.norm());
+                    printf("===============================\n");
+                    break;
+                }
+                //x0 = 
+            }
+            else
                 H0k = y.dot(s) / dot;
             
             
